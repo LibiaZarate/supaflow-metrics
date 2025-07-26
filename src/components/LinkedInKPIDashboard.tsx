@@ -49,6 +49,7 @@ interface CalculatedMetrics {
   acceptanceRate: number;
   avgTimeToAccept: number;
   totalConnections: number;
+  totalNetworkConnections: number;
   avgFollowUpCount: number;
   responseRate: number;
   errorRate: number;
@@ -138,6 +139,11 @@ export const LinkedInKPIDashboard = () => {
     
     const errorRate = totalInvitations > 0 ? (errorsCount / totalInvitations) * 100 : 0;
 
+    // Calculate total network connections (sum of all connectionsCount)
+    const totalNetworkConnections = dashboardData.reduce((sum, item) => 
+      sum + (Number(item.connectionsCount) || 0), 0
+    );
+
     // Time savings calculation (estimated)
     const avgManualTimePerConnection = 15; // minutes
     const timeSaved = totalConnections * avgManualTimePerConnection;
@@ -148,6 +154,7 @@ export const LinkedInKPIDashboard = () => {
       acceptanceRate,
       avgTimeToAccept,
       totalConnections,
+      totalNetworkConnections,
       avgFollowUpCount,
       responseRate,
       errorRate,
@@ -247,13 +254,38 @@ export const LinkedInKPIDashboard = () => {
           </div>
         </section>
 
+        {/* Network Metrics */}
+        <section className="space-y-4">
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" />
+            Network Metrics
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <MetricCard
+              title="Total Network Connections"
+              value={metrics.totalNetworkConnections.toLocaleString()}
+              subtitle="Sum of all prospect connections"
+              icon={<Users className="h-4 w-4 text-info" />}
+              variant="info"
+            />
+            <MetricCard
+              title="Response Rate"
+              value={`${metrics.responseRate.toFixed(1)}%`}
+              trend={metrics.responseRate > 20 ? "up" : metrics.responseRate > 10 ? "neutral" : "down"}
+              trendValue={metrics.responseRate > 20 ? "Excellent" : metrics.responseRate > 10 ? "Good" : "Needs improvement"}
+              icon={<CheckCircle className="h-4 w-4 text-success" />}
+              variant="success"
+            />
+          </div>
+        </section>
+
         {/* Follow-up Efficiency */}
         <section className="space-y-4">
           <h2 className="text-xl font-semibold flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />
             Follow-up Efficiency
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <MetricCard
               title="Avg. Follow-ups per Connection"
               value={metrics.avgFollowUpCount.toFixed(1)}
@@ -261,13 +293,6 @@ export const LinkedInKPIDashboard = () => {
               trendValue={metrics.avgFollowUpCount < 3 ? "Efficient" : "High effort"}
               icon={<MessageSquare className="h-4 w-4 text-info" />}
               variant="info"
-            />
-            <MetricCard
-              title="Response Rate"
-              value={`${metrics.responseRate.toFixed(1)}%`}
-              trend={metrics.responseRate > 20 ? "up" : metrics.responseRate > 10 ? "neutral" : "down"}
-              icon={<CheckCircle className="h-4 w-4 text-success" />}
-              variant="success"
             />
             <MetricCard
               title="Message Error Rate"
