@@ -30,4 +30,4 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
           docker pull libiaz/supaflow-dashboard:latest
-          docker service update --force supaflow_supaflow
+          docker service update --force supaflow-lovable_supaflow
