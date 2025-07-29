@@ -74,7 +74,7 @@ export const LinkedInKPIDashboard = () => {
 
       if (error) {
         toast({
-          title: "Error fetching data",
+          title: "Error al obtener datos",
           description: error.message,
           variant: "destructive"
         });
@@ -86,7 +86,7 @@ export const LinkedInKPIDashboard = () => {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to fetch dashboard data",
+        description: "Error al cargar los datos del panel",
         variant: "destructive"
       });
     } finally {
@@ -174,7 +174,7 @@ export const LinkedInKPIDashboard = () => {
 
   const getChartData = () => {
     return data.slice(0, 10).map((item, index) => ({
-      name: `Connection ${index + 1}`,
+      name: `Conexión ${index + 1}`,
       followUps: Number(item.followUpCount) || 0,
       timeToAccept: parseFloat(item.timeToAccept) || 0,
       accepted: item.requestAccepted === 'Yes' ? 1 : 0
@@ -185,8 +185,8 @@ export const LinkedInKPIDashboard = () => {
     if (!metrics) return [];
     
     return [
-      { name: 'Accepted', value: metrics.acceptanceRate, color: 'hsl(var(--chart-1))' },
-      { name: 'Pending/Rejected', value: 100 - metrics.acceptanceRate, color: 'hsl(var(--chart-2))' }
+      { name: 'Aceptadas', value: metrics.acceptanceRate, color: 'hsl(var(--chart-1))' },
+      { name: 'Pendientes/Rechazadas', value: 100 - metrics.acceptanceRate, color: 'hsl(var(--chart-2))' }
     ];
   };
 
@@ -195,7 +195,7 @@ export const LinkedInKPIDashboard = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading dashboard...</p>
+          <p className="text-muted-foreground">Cargando panel de control...</p>
         </div>
       </div>
     );
@@ -206,8 +206,8 @@ export const LinkedInKPIDashboard = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <AlertTriangle className="h-12 w-12 text-warning mx-auto mb-4" />
-          <h2 className="text-xl font-semibold mb-2">No Data Available</h2>
-          <p className="text-muted-foreground">No LinkedIn automation data found in the database.</p>
+          <h2 className="text-xl font-semibold mb-2">No hay datos disponibles</h2>
+          <p className="text-muted-foreground">No se encontraron datos de automatización de LinkedIn en la base de datos.</p>
         </div>
       </div>
     );
@@ -219,10 +219,10 @@ export const LinkedInKPIDashboard = () => {
         {/* Header */}
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-            LinkedIn Automation KPI Dashboard
+            Panel de KPIs de Automatización LinkedIn
           </h1>
           <p className="text-muted-foreground">
-            Comprehensive analytics for your LinkedIn outreach automation
+            Análisis integral de tu automatización de outreach en LinkedIn
           </p>
         </div>
 
@@ -230,32 +230,32 @@ export const LinkedInKPIDashboard = () => {
         <section className="space-y-4">
           <h2 className="text-xl font-semibold flex items-center gap-2">
             <Target className="h-5 w-5 text-primary" />
-            Conversion Metrics
+            Métricas de Conversión
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
-              title="Total Invitations"
+              title="Total de Invitaciones"
               value={metrics.totalInvitations}
               icon={<Users className="h-4 w-4 text-primary" />}
               variant="info"
             />
             <MetricCard
-              title="Acceptance Rate"
+              title="Tasa de Aceptación"
               value={`${metrics.acceptanceRate.toFixed(1)}%`}
               trend={metrics.acceptanceRate > 30 ? "up" : metrics.acceptanceRate > 15 ? "neutral" : "down"}
-              trendValue={metrics.acceptanceRate > 30 ? "Excellent" : metrics.acceptanceRate > 15 ? "Good" : "Needs improvement"}
+              trendValue={metrics.acceptanceRate > 30 ? "Excelente" : metrics.acceptanceRate > 15 ? "Bueno" : "Necesita mejora"}
               icon={<UserCheck className="h-4 w-4 text-success" />}
               variant="success"
             />
             <MetricCard
-              title="Avg. Time to Accept"
-              value={`${metrics.avgTimeToAccept.toFixed(1)} days`}
+              title="Tiempo Promedio de Aceptación"
+              value={`${metrics.avgTimeToAccept.toFixed(1)} días`}
               trend={metrics.avgTimeToAccept < 7 ? "up" : metrics.avgTimeToAccept < 14 ? "neutral" : "down"}
               icon={<Clock className="h-4 w-4 text-info" />}
               variant="default"
             />
             <MetricCard
-              title="Total Connections"
+              title="Total de Conexiones"
               value={metrics.totalConnections}
               icon={<TrendingUp className="h-4 w-4 text-primary" />}
               variant="success"
@@ -267,21 +267,21 @@ export const LinkedInKPIDashboard = () => {
         <section className="space-y-4">
           <h2 className="text-xl font-semibold flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" />
-            Network Metrics
+            Métricas de Red
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <MetricCard
-              title="Total Network Connections"
+              title="Total Conexiones de Red"
               value={metrics.totalNetworkConnections.toLocaleString()}
-              subtitle="Sum of all prospect connections"
+              subtitle="Suma de todas las conexiones de prospectos"
               icon={<Users className="h-4 w-4 text-info" />}
               variant="info"
             />
             <MetricCard
-              title="Response Rate"
+              title="Tasa de Respuesta"
               value={`${metrics.responseRate.toFixed(1)}%`}
               trend={metrics.responseRate > 20 ? "up" : metrics.responseRate > 10 ? "neutral" : "down"}
-              trendValue={metrics.responseRate > 20 ? "Excellent" : metrics.responseRate > 10 ? "Good" : "Needs improvement"}
+              trendValue={metrics.responseRate > 20 ? "Excelente" : metrics.responseRate > 10 ? "Bueno" : "Necesita mejora"}
               icon={<CheckCircle className="h-4 w-4 text-success" />}
               variant="success"
             />
@@ -292,22 +292,22 @@ export const LinkedInKPIDashboard = () => {
         <section className="space-y-4">
           <h2 className="text-xl font-semibold flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />
-            Follow-up Efficiency
+            Eficiencia de Seguimiento
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <MetricCard
-              title="Avg. Follow-ups per Connection"
+              title="Prom. Seguimientos por Conexión"
               value={metrics.avgFollowUpCount.toFixed(1)}
               trend={metrics.avgFollowUpCount < 3 ? "up" : metrics.avgFollowUpCount < 5 ? "neutral" : "down"}
-              trendValue={metrics.avgFollowUpCount < 3 ? "Efficient" : "High effort"}
+              trendValue={metrics.avgFollowUpCount < 3 ? "Eficiente" : "Alto esfuerzo"}
               icon={<MessageSquare className="h-4 w-4 text-info" />}
               variant="info"
             />
             <MetricCard
-              title="Message Error Rate"
+              title="Tasa de Error de Mensajes"
               value={`${metrics.errorRate.toFixed(1)}%`}
               trend={metrics.errorRate < 5 ? "up" : metrics.errorRate < 10 ? "neutral" : "down"}
-              trendValue={metrics.errorRate < 5 ? "Low errors" : "Needs attention"}
+              trendValue={metrics.errorRate < 5 ? "Pocos errores" : "Necesita atención"}
               icon={<XCircle className="h-4 w-4 text-destructive" />}
               variant="warning"
             />
@@ -319,7 +319,7 @@ export const LinkedInKPIDashboard = () => {
           {/* Acceptance Rate Chart */}
           <Card>
             <CardHeader>
-              <CardTitle>Acceptance Rate Distribution</CardTitle>
+              <CardTitle>Distribución de Tasa de Aceptación</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
@@ -346,7 +346,7 @@ export const LinkedInKPIDashboard = () => {
           {/* Follow-up Performance */}
           <Card>
             <CardHeader>
-              <CardTitle>Follow-up vs Time to Accept</CardTitle>
+              <CardTitle>Seguimientos vs Tiempo de Aceptación</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
@@ -360,14 +360,14 @@ export const LinkedInKPIDashboard = () => {
                     dataKey="followUps" 
                     stroke="hsl(var(--chart-1))" 
                     strokeWidth={2}
-                    name="Follow-ups"
+                    name="Seguimientos"
                   />
                   <Line 
                     type="monotone" 
                     dataKey="timeToAccept" 
                     stroke="hsl(var(--chart-2))" 
                     strokeWidth={2}
-                    name="Time to Accept (days)"
+                    name="Tiempo de Aceptación (días)"
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -379,17 +379,17 @@ export const LinkedInKPIDashboard = () => {
         <section className="space-y-4">
           <h2 className="text-xl font-semibold flex items-center gap-2">
             <Timer className="h-5 w-5 text-primary" />
-            Time Impact Summary
+            Resumen de Impacto de Tiempo
           </h2>
           <Card className="bg-gradient-to-br from-primary/5 to-success/5 border-primary/20">
             <CardHeader>
-              <CardTitle className="text-lg">Automation Benefits</CardTitle>
+              <CardTitle className="text-lg">Beneficios de la Automatización</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Time Saved</span>
+                    <span className="text-sm font-medium">Tiempo Ahorrado</span>
                     <Badge variant="secondary" className="bg-success/10 text-success">
                       {Math.floor(metrics.timeSaved / 60)}h {metrics.timeSaved % 60}m
                     </Badge>
@@ -397,7 +397,7 @@ export const LinkedInKPIDashboard = () => {
                   <Progress value={Math.min((metrics.timeSaved / 1000) * 100, 100)} className="h-2" />
                   
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Manual Effort Saved</span>
+                    <span className="text-sm font-medium">Esfuerzo Manual Ahorrado</span>
                     <Badge variant="secondary" className="bg-warning/10 text-warning">
                       ${metrics.manualEffortSaved}
                     </Badge>
@@ -406,26 +406,26 @@ export const LinkedInKPIDashboard = () => {
                 </div>
                 
                 <div className="space-y-3">
-                  <h4 className="font-medium text-sm">Key Insights</h4>
+                  <h4 className="font-medium text-sm">Insights Clave</h4>
                   <ul className="space-y-2 text-sm text-muted-foreground">
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-success mt-0.5 flex-shrink-0" />
                       <span>
-                        Automation has saved approximately <strong>{Math.floor(metrics.timeSaved / 60)} hours</strong> compared to manual outreach
+                        La automatización ha ahorrado aproximadamente <strong>{Math.floor(metrics.timeSaved / 60)} horas</strong> comparado con outreach manual
                       </span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-success mt-0.5 flex-shrink-0" />
                       <span>
-                        Current acceptance rate of <strong>{metrics.acceptanceRate.toFixed(1)}%</strong> 
-                        {metrics.acceptanceRate > 20 ? " is above industry average" : " can be improved with better targeting"}
+                        La tasa de aceptación actual del <strong>{metrics.acceptanceRate.toFixed(1)}%</strong> 
+                        {metrics.acceptanceRate > 20 ? " está por encima del promedio de la industria" : " puede mejorarse con mejor targeting"}
                       </span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-success mt-0.5 flex-shrink-0" />
                       <span>
-                        Average follow-up efficiency of <strong>{metrics.avgFollowUpCount.toFixed(1)} messages per connection</strong>
-                        {metrics.avgFollowUpCount < 3 ? " shows excellent targeting" : " suggests room for optimization"}
+                        Eficiencia promedio de seguimiento de <strong>{metrics.avgFollowUpCount.toFixed(1)} mensajes por conexión</strong>
+                        {metrics.avgFollowUpCount < 3 ? " muestra excelente targeting" : " sugiere oportunidades de optimización"}
                       </span>
                     </li>
                   </ul>
