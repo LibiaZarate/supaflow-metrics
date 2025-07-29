@@ -101,13 +101,25 @@ export const LinkedInKPIDashboard = () => {
     }
 
     const totalInvitations = dashboardData.length;
-    const acceptedInvitations = dashboardData.filter(item => 
-      item.requestAccepted === 'Yes' || item.requestAccepted === 'yes' || item.requestAccepted === '1'
-    ).length;
     
+    // 1. ACCEPTANCE RATE: (requestAccepted = "YES") / (Total registros) × 100
+    const acceptedInvitations = dashboardData.filter(item => 
+      item.requestAccepted && item.requestAccepted.trim().toUpperCase() === 'YES'
+    ).length;
     const acceptanceRate = totalInvitations > 0 ? (acceptedInvitations / totalInvitations) * 100 : 0;
     
-    const validTimeToAccept = dashboardData
+    // 2. RESPONSE RATE: (acceptanceDate no vacío) / (Total registros) × 100
+    const responsesReceived = dashboardData.filter(item => 
+      item.acceptanceDate && item.acceptanceDate.trim() !== '' && item.acceptanceDate.trim() !== 'null'
+    ).length;
+    const responseRate = totalInvitations > 0 ? (responsesReceived / totalInvitations) * 100 : 0;
+    
+    // 3. AVERAGE TIME TO ACCEPT: Solo para registros aceptados
+    const acceptedRecords = dashboardData.filter(item => 
+      item.requestAccepted && item.requestAccepted.trim().toUpperCase() === 'YES'
+    );
+    
+    const validTimeToAccept = acceptedRecords
       .map(item => parseFloat(item.timeToAccept))
       .filter(time => !isNaN(time) && time > 0);
     
@@ -115,31 +127,28 @@ export const LinkedInKPIDashboard = () => {
       ? validTimeToAccept.reduce((sum, time) => sum + time, 0) / validTimeToAccept.length 
       : 0;
 
-    const totalConnections = dashboardData.reduce((sum, item) => 
-      sum + (Number(item.connectionsCount) || 0), 0
-    );
+    // 4. TOTAL CONNECTIONS: COUNT de registros donde requestAccepted = "YES"
+    const totalConnections = acceptedInvitations;
 
-    const validFollowUps = dashboardData
+    // 5. FOLLOW-UP EFFICIENCY: Promedio de followUpCount para registros aceptados
+    const followUpCounts = acceptedRecords
       .map(item => Number(item.followUpCount))
-      .filter(count => !isNaN(count));
+      .filter(count => !isNaN(count) && count >= 0);
     
-    const avgFollowUpCount = validFollowUps.length > 0
-      ? validFollowUps.reduce((sum, count) => sum + count, 0) / validFollowUps.length
+    const avgFollowUpCount = followUpCounts.length > 0
+      ? followUpCounts.reduce((sum, count) => sum + count, 0) / followUpCounts.length
       : 0;
 
-    const responsesReceived = dashboardData.filter(item => 
-      item.responseReceived === 'Yes' || item.responseReceived === 'yes' || item.responseReceived === '1'
-    ).length;
-    
-    const responseRate = totalInvitations > 0 ? (responsesReceived / totalInvitations) * 100 : 0;
-
+    // 6. MESSAGE ERROR RATE: (messageError no vacío) / (Total registros) × 100
     const errorsCount = dashboardData.filter(item => 
-      item.messageError && item.messageError.trim() !== '' && item.messageError !== 'null'
+      item.messageError && 
+      item.messageError.trim() !== '' && 
+      item.messageError.trim().toLowerCase() !== 'null' &&
+      item.messageError.trim().toLowerCase() !== 'undefined'
     ).length;
-    
     const errorRate = totalInvitations > 0 ? (errorsCount / totalInvitations) * 100 : 0;
 
-    // Calculate total network connections (sum of all connectionsCount)
+    // Total network connections (sum of all connectionsCount)
     const totalNetworkConnections = dashboardData.reduce((sum, item) => 
       sum + (Number(item.connectionsCount) || 0), 0
     );
