@@ -345,7 +345,6 @@ export const EmailKPIDashboard = () => {
             value={`${metrics.roi.toFixed(1)}%`}
             icon={<DollarSign className="h-5 w-5 text-success" />}
             variant="success"
-            className="animate-pulse"
           />
           <MetricCard
             title="Meeting Rate"
