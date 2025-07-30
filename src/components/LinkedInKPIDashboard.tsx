@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { MetricCard } from "./MetricCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -32,61 +31,89 @@ import {
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
-interface DashboardData {
-  id: number;
-  followUpCount: number;
-  connectionsCount: number;
-  messageError: string;
-  responseReceived: string;
-  invitationDate: string;
-  requestAccepted: string;
-  acceptanceDate: string;
-  timeToAccept: string;
+interface NocoDBRecord {
+  ID_LinkedIn: string;
+  Nombre: string;
+  Apellido: string;
+  Final: string;
+  URL_LinkedIn: string;
+  Empresa: string;
+  Sector: string;
+  Status: string;
+  Mensaje: string;
+  Seguimiento_1: string;
+  Seguimiento_2: string;
 }
 
 interface CalculatedMetrics {
-  totalInvitations: number;
-  acceptanceRate: number;
-  avgTimeToAccept: number;
-  totalConnections: number;
-  totalNetworkConnections: number;
-  avgFollowUpCount: number;
+  totalProspects: number;
+  contactedRate: number;
   responseRate: number;
-  errorRate: number;
+  finalRate: number;
+  totalCompanies: number;
+  totalSectors: number;
+  avgMessageLength: number;
+  followUpRate: number;
   timeSaved: number;
   manualEffortSaved: number;
+  roi: number;
 }
 
 export const LinkedInKPIDashboard = () => {
-  const [data, setData] = useState<DashboardData[]>([]);
+  const [data, setData] = useState<NocoDBRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState<CalculatedMetrics | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<string>("Conectando...");
+  const [lastUpdate, setLastUpdate] = useState<string>("");
 
   useEffect(() => {
     fetchDashboardData();
+    // Auto-refresh cada 30 segundos
+    const interval = setInterval(fetchDashboardData, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchDashboardData = async () => {
+    const startTime = Date.now();
+    
     try {
-      const { data: dashboardData, error } = await supabase
-        .from('LinkedIn Dashboards')
-        .select('*');
+      setConnectionStatus("Conectando a NocoDB...");
+      
+      const baseURL = 'https://pmnocodb.perezmartinez.mx';
+      const apiToken = 'idt1kfiu1V70l2zmUII_Rd_yKDM2GkOyzGxfsmdf';
+      const projectName = 'PROSPECCIÓN';
+      const tableName = 'PROSPECCIÓN LINKEDIN';
+      
+      const url = `${baseURL}/api/v1/db/data/noco/${encodeURIComponent(projectName)}/${encodeURIComponent(tableName)}`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'xc-token': apiToken,
+          'Content-Type': 'application/json'
+        }
+      });
 
-      if (error) {
-        toast({
-          title: "Error al obtener datos",
-          description: error.message,
-          variant: "destructive"
-        });
-        return;
+      if (!response.ok) {
+        throw new Error(`Error HTTP: ${response.status}`);
       }
 
-      setData(dashboardData || []);
-      calculateMetrics(dashboardData || []);
+      const result = await response.json();
+      const dashboardData = result.list || result || [];
+      
+      setData(dashboardData);
+      calculateLinkedInMetrics(dashboardData);
+      
+      const loadTime = Date.now() - startTime;
+      setConnectionStatus(`🟢 Conectado a NocoDB (${dashboardData.length} registros)`);
+      setLastUpdate(`Actualizado: ${new Date().toLocaleTimeString()} (${loadTime}ms)`);
+      
     } catch (error) {
+      console.error('Error conectando con NocoDB:', error);
+      setConnectionStatus("🔴 Error de conexión");
       toast({
         title: "Error",
-        description: "Error al cargar los datos del panel",
+        description: "Error al cargar los datos desde NocoDB",
         variant: "destructive"
       });
     } finally {
@@ -94,90 +121,98 @@ export const LinkedInKPIDashboard = () => {
     }
   };
 
-  const calculateMetrics = (dashboardData: DashboardData[]) => {
+  const calculateLinkedInMetrics = (dashboardData: NocoDBRecord[]) => {
     if (dashboardData.length === 0) {
       setMetrics(null);
       return;
     }
 
-    const totalInvitations = dashboardData.length;
+    const totalProspects = dashboardData.length;
     
-    // 1. ACCEPTANCE RATE: (requestAccepted = "YES") / (Total registros) × 100
-    const acceptedInvitations = dashboardData.filter(item => 
-      item.requestAccepted && item.requestAccepted.trim().toUpperCase() === 'YES'
+    // 1. CONTACTED RATE: Prospectos con Status activo
+    const contactedProspects = dashboardData.filter(item => 
+      item.Status && 
+      item.Status.trim() !== '' && 
+      item.Status.toLowerCase() !== 'pendiente'
     ).length;
-    const acceptanceRate = totalInvitations > 0 ? (acceptedInvitations / totalInvitations) * 100 : 0;
+    const contactedRate = totalProspects > 0 ? (contactedProspects / totalProspects) * 100 : 0;
     
-    // 2. RESPONSE RATE: (acceptanceDate no vacío) / (Total registros) × 100
+    // 2. RESPONSE RATE: Prospectos con Mensaje no vacío (han respondido)
     const responsesReceived = dashboardData.filter(item => 
-      item.acceptanceDate && item.acceptanceDate.trim() !== '' && item.acceptanceDate.trim() !== 'null'
+      item.Mensaje && item.Mensaje.trim() !== ''
     ).length;
-    const responseRate = totalInvitations > 0 ? (responsesReceived / totalInvitations) * 100 : 0;
+    const responseRate = totalProspects > 0 ? (responsesReceived / totalProspects) * 100 : 0;
     
-    // 3. AVERAGE TIME TO ACCEPT: Solo para registros aceptados
-    const acceptedRecords = dashboardData.filter(item => 
-      item.requestAccepted && item.requestAccepted.trim().toUpperCase() === 'YES'
+    // 3. FINAL RATE: Prospectos que llegaron a status "Final"
+    const finalProspects = dashboardData.filter(item => 
+      item.Final && 
+      (item.Final.toLowerCase() === 'si' || 
+       item.Final.toLowerCase() === 'yes' || 
+       item.Final === '1')
+    ).length;
+    const finalRate = totalProspects > 0 ? (finalProspects / totalProspects) * 100 : 0;
+
+    // 4. COMPANIES & SECTORS ANALYSIS
+    const uniqueCompanies = new Set(
+      dashboardData.filter(item => item.Empresa && item.Empresa.trim() !== '')
+                   .map(item => item.Empresa.trim())
     );
+    const totalCompanies = uniqueCompanies.size;
     
-    const validTimeToAccept = acceptedRecords
-      .map(item => parseFloat(item.timeToAccept))
-      .filter(time => !isNaN(time) && time > 0);
-    
-    const avgTimeToAccept = validTimeToAccept.length > 0 
-      ? validTimeToAccept.reduce((sum, time) => sum + time, 0) / validTimeToAccept.length 
+    const uniqueSectors = new Set(
+      dashboardData.filter(item => item.Sector && item.Sector.trim() !== '')
+                   .map(item => item.Sector.trim())
+    );
+    const totalSectors = uniqueSectors.size;
+
+    // 5. FOLLOW-UP ANALYSIS
+    const followUpProspects = dashboardData.filter(item => 
+      (item.Seguimiento_1 && item.Seguimiento_1.trim() !== '') ||
+      (item.Seguimiento_2 && item.Seguimiento_2.trim() !== '')
+    ).length;
+    const followUpRate = totalProspects > 0 ? (followUpProspects / totalProspects) * 100 : 0;
+
+    // 6. MESSAGE LENGTH ANALYSIS
+    const validMessages = dashboardData.filter(item => item.Mensaje && item.Mensaje.trim() !== '');
+    const avgMessageLength = validMessages.length > 0 
+      ? validMessages.reduce((sum, item) => sum + item.Mensaje.length, 0) / validMessages.length 
       : 0;
 
-    // 4. TOTAL CONNECTIONS: COUNT de registros donde requestAccepted = "YES"
-    const totalConnections = acceptedInvitations;
-
-    // 5. FOLLOW-UP EFFICIENCY: Promedio de followUpCount para registros aceptados
-    const followUpCounts = acceptedRecords
-      .map(item => Number(item.followUpCount))
-      .filter(count => !isNaN(count) && count >= 0);
+    // TIME SAVINGS & ROI CALCULATION
+    const avgManualTimePerProspect = 20; // minutos por prospecto manual
+    const timeSaved = contactedProspects * avgManualTimePerProspect;
+    const hourlyRate = 60; // $60 USD/hora
+    const manualEffortSaved = Math.round((timeSaved / 60) * hourlyRate);
     
-    const avgFollowUpCount = followUpCounts.length > 0
-      ? followUpCounts.reduce((sum, count) => sum + count, 0) / followUpCounts.length
-      : 0;
-
-    // 6. MESSAGE ERROR RATE: (messageError no vacío) / (Total registros) × 100
-    const errorsCount = dashboardData.filter(item => 
-      item.messageError && 
-      item.messageError.trim() !== '' && 
-      item.messageError.trim().toLowerCase() !== 'null' &&
-      item.messageError.trim().toLowerCase() !== 'undefined'
-    ).length;
-    const errorRate = totalInvitations > 0 ? (errorsCount / totalInvitations) * 100 : 0;
-
-    // Total network connections (sum of all connectionsCount)
-    const totalNetworkConnections = dashboardData.reduce((sum, item) => 
-      sum + (Number(item.connectionsCount) || 0), 0
-    );
-
-    // Time savings calculation (estimated)
-    const avgManualTimePerConnection = 15; // minutes
-    const timeSaved = totalConnections * avgManualTimePerConnection;
-    const manualEffortSaved = totalConnections * 10; // estimated cost per manual connection
+    // ROI calculation
+    const avgDealSize = 20000;
+    const closeRate = 0.15; // 15% tasa de cierre estimada
+    const projectedRevenue = finalProspects * avgDealSize * closeRate;
+    const systemCost = 1500; // Costo mensual estimado del sistema
+    const roi = systemCost > 0 ? Math.max(0, ((projectedRevenue - systemCost) / systemCost) * 100) : 0;
 
     setMetrics({
-      totalInvitations,
-      acceptanceRate,
-      avgTimeToAccept,
-      totalConnections,
-      totalNetworkConnections,
-      avgFollowUpCount,
+      totalProspects,
+      contactedRate,
       responseRate,
-      errorRate,
+      finalRate,
+      totalCompanies,
+      totalSectors,
+      avgMessageLength,
+      followUpRate,
       timeSaved,
-      manualEffortSaved
+      manualEffortSaved,
+      roi
     });
   };
 
   const getChartData = () => {
     return data.slice(0, 10).map((item, index) => ({
-      name: `Conexión ${index + 1}`,
-      followUps: Number(item.followUpCount) || 0,
-      timeToAccept: parseFloat(item.timeToAccept) || 0,
-      accepted: item.requestAccepted === 'Yes' ? 1 : 0
+      name: `Prospecto ${index + 1}`,
+      hasMessage: item.Mensaje && item.Mensaje.trim() !== '' ? 1 : 0,
+      hasFollowUp: ((item.Seguimiento_1 && item.Seguimiento_1.trim() !== '') || 
+                    (item.Seguimiento_2 && item.Seguimiento_2.trim() !== '')) ? 1 : 0,
+      isFinal: (item.Final && (item.Final.toLowerCase() === 'si' || item.Final === '1')) ? 1 : 0
     }));
   };
 
@@ -185,9 +220,28 @@ export const LinkedInKPIDashboard = () => {
     if (!metrics) return [];
     
     return [
-      { name: 'Aceptadas', value: metrics.acceptanceRate, color: 'hsl(var(--chart-1))' },
-      { name: 'Pendientes/Rechazadas', value: 100 - metrics.acceptanceRate, color: 'hsl(var(--chart-2))' }
+      { name: 'Contactados', value: metrics.contactedRate, color: 'hsl(var(--chart-1))' },
+      { name: 'Pendientes', value: 100 - metrics.contactedRate, color: 'hsl(var(--chart-2))' }
     ];
+  };
+
+  const getSectorData = () => {
+    const sectorCounts: { [key: string]: number } = {};
+    data.forEach(item => {
+      if (item.Sector && item.Sector.trim() !== '') {
+        const sector = item.Sector.trim();
+        sectorCounts[sector] = (sectorCounts[sector] || 0) + 1;
+      }
+    });
+    
+    return Object.entries(sectorCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([sector, count]) => ({
+        name: sector,
+        value: count,
+        color: `hsl(${Math.random() * 360}, 70%, 50%)`
+      }));
   };
 
   if (loading) {
@@ -224,91 +278,101 @@ export const LinkedInKPIDashboard = () => {
           <p className="text-muted-foreground">
             Análisis integral de tu automatización de outreach en LinkedIn
           </p>
+          <div className="flex justify-center gap-4 text-sm">
+            <span className="text-muted-foreground">{connectionStatus}</span>
+            <span className="text-muted-foreground">{lastUpdate}</span>
+          </div>
         </div>
 
-        {/* Conversion Metrics */}
+        {/* Primary Metrics */}
         <section className="space-y-4">
           <h2 className="text-xl font-semibold flex items-center gap-2">
             <Target className="h-5 w-5 text-primary" />
-            Métricas de Conversión
+            Métricas Principales
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
-              title="Total de Invitaciones"
-              value={metrics.totalInvitations}
+              title="Total de Prospectos"
+              value={metrics.totalProspects}
               icon={<Users className="h-4 w-4 text-primary" />}
               variant="info"
             />
             <MetricCard
-              title="Tasa de Aceptación"
-              value={`${metrics.acceptanceRate.toFixed(1)}%`}
-              trend={metrics.acceptanceRate > 30 ? "up" : metrics.acceptanceRate > 15 ? "neutral" : "down"}
-              trendValue={metrics.acceptanceRate > 30 ? "Excelente" : metrics.acceptanceRate > 15 ? "Bueno" : "Necesita mejora"}
+              title="Tasa de Contacto"
+              value={`${metrics.contactedRate.toFixed(1)}%`}
+              trend={metrics.contactedRate > 80 ? "up" : metrics.contactedRate > 60 ? "neutral" : "down"}
+              trendValue={metrics.contactedRate > 80 ? "Excelente" : metrics.contactedRate > 60 ? "Bueno" : "Necesita mejora"}
               icon={<UserCheck className="h-4 w-4 text-success" />}
               variant="success"
             />
             <MetricCard
-              title="Tiempo Promedio de Aceptación"
-              value={`${metrics.avgTimeToAccept.toFixed(1)} días`}
-              trend={metrics.avgTimeToAccept < 7 ? "up" : metrics.avgTimeToAccept < 14 ? "neutral" : "down"}
-              icon={<Clock className="h-4 w-4 text-info" />}
+              title="Tasa de Respuesta"
+              value={`${metrics.responseRate.toFixed(1)}%`}
+              trend={metrics.responseRate > 15 ? "up" : metrics.responseRate > 8 ? "neutral" : "down"}
+              icon={<MessageSquare className="h-4 w-4 text-info" />}
               variant="default"
             />
             <MetricCard
-              title="Total de Conexiones"
-              value={metrics.totalConnections}
+              title="Tasa de Finalización"
+              value={`${metrics.finalRate.toFixed(1)}%`}
+              icon={<CheckCircle className="h-4 w-4 text-primary" />}
+              variant="success"
+            />
+          </div>
+        </section>
+
+        {/* Business Metrics */}
+        <section className="space-y-4">
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" />
+            Métricas de Negocio
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <MetricCard
+              title="Total de Empresas"
+              value={metrics.totalCompanies.toLocaleString()}
+              subtitle="Empresas únicas contactadas"
+              icon={<Users className="h-4 w-4 text-info" />}
+              variant="info"
+            />
+            <MetricCard
+              title="Sectores Alcanzados"
+              value={metrics.totalSectors.toLocaleString()}
+              subtitle="Sectores únicos"
+              icon={<Target className="h-4 w-4 text-success" />}
+              variant="success"
+            />
+            <MetricCard
+              title="ROI Estimado"
+              value={`${metrics.roi.toFixed(1)}%`}
+              trend={metrics.roi > 200 ? "up" : metrics.roi > 100 ? "neutral" : "down"}
               icon={<TrendingUp className="h-4 w-4 text-primary" />}
               variant="success"
             />
           </div>
         </section>
 
-        {/* Network Metrics */}
-        <section className="space-y-4">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" />
-            Métricas de Red
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <MetricCard
-              title="Total Conexiones de Red"
-              value={metrics.totalNetworkConnections.toLocaleString()}
-              subtitle="Suma de todas las conexiones de prospectos"
-              icon={<Users className="h-4 w-4 text-info" />}
-              variant="info"
-            />
-            <MetricCard
-              title="Tasa de Respuesta"
-              value={`${metrics.responseRate.toFixed(1)}%`}
-              trend={metrics.responseRate > 20 ? "up" : metrics.responseRate > 10 ? "neutral" : "down"}
-              trendValue={metrics.responseRate > 20 ? "Excelente" : metrics.responseRate > 10 ? "Bueno" : "Necesita mejora"}
-              icon={<CheckCircle className="h-4 w-4 text-success" />}
-              variant="success"
-            />
-          </div>
-        </section>
-
-        {/* Follow-up Efficiency */}
+        {/* Communication Metrics */}
         <section className="space-y-4">
           <h2 className="text-xl font-semibold flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />
-            Eficiencia de Seguimiento
+            Métricas de Comunicación
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <MetricCard
-              title="Prom. Seguimientos por Conexión"
-              value={metrics.avgFollowUpCount.toFixed(1)}
-              trend={metrics.avgFollowUpCount < 3 ? "up" : metrics.avgFollowUpCount < 5 ? "neutral" : "down"}
-              trendValue={metrics.avgFollowUpCount < 3 ? "Eficiente" : "Alto esfuerzo"}
+              title="Tasa de Seguimiento"
+              value={`${metrics.followUpRate.toFixed(1)}%`}
+              trend={metrics.followUpRate > 60 ? "up" : metrics.followUpRate > 40 ? "neutral" : "down"}
+              trendValue={metrics.followUpRate > 60 ? "Excelente seguimiento" : "Puede mejorar"}
               icon={<MessageSquare className="h-4 w-4 text-info" />}
               variant="info"
             />
             <MetricCard
-              title="Tasa de Error de Mensajes"
-              value={`${metrics.errorRate.toFixed(1)}%`}
-              trend={metrics.errorRate < 5 ? "up" : metrics.errorRate < 10 ? "neutral" : "down"}
-              trendValue={metrics.errorRate < 5 ? "Pocos errores" : "Necesita atención"}
-              icon={<XCircle className="h-4 w-4 text-destructive" />}
+              title="Long. Promedio de Mensaje"
+              value={`${Math.round(metrics.avgMessageLength)} chars`}
+              trend={metrics.avgMessageLength > 100 && metrics.avgMessageLength < 300 ? "up" : "neutral"}
+              trendValue={metrics.avgMessageLength > 100 && metrics.avgMessageLength < 300 ? "Longitud óptima" : "Revisar extensión"}
+              icon={<Clock className="h-4 w-4 text-warning" />}
               variant="warning"
             />
           </div>
@@ -316,10 +380,10 @@ export const LinkedInKPIDashboard = () => {
 
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Acceptance Rate Chart */}
+          {/* Contact Rate Chart */}
           <Card>
             <CardHeader>
-              <CardTitle>Distribución de Tasa de Aceptación</CardTitle>
+              <CardTitle>Distribución de Contactos</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
@@ -343,47 +407,38 @@ export const LinkedInKPIDashboard = () => {
             </CardContent>
           </Card>
 
-          {/* Follow-up Performance */}
+          {/* Sector Distribution */}
           <Card>
             <CardHeader>
-              <CardTitle>Seguimientos vs Tiempo de Aceptación</CardTitle>
+              <CardTitle>Top 5 Sectores</CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={getChartData()}>
+                <BarChart data={getSectorData()}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis />
                   <Tooltip />
-                  <Line 
-                    type="monotone" 
-                    dataKey="followUps" 
-                    stroke="hsl(var(--chart-1))" 
-                    strokeWidth={2}
-                    name="Seguimientos"
+                  <Bar 
+                    dataKey="value" 
+                    fill="hsl(var(--chart-1))"
+                    name="Prospectos"
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="timeToAccept" 
-                    stroke="hsl(var(--chart-2))" 
-                    strokeWidth={2}
-                    name="Tiempo de Aceptación (días)"
-                  />
-                </LineChart>
+                </BarChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
         </div>
 
-        {/* Time Impact Summary */}
+        {/* ROI and Impact Summary */}
         <section className="space-y-4">
           <h2 className="text-xl font-semibold flex items-center gap-2">
             <Timer className="h-5 w-5 text-primary" />
-            Resumen de Impacto de Tiempo
+            Resumen de ROI e Impacto
           </h2>
           <Card className="bg-gradient-to-br from-primary/5 to-success/5 border-primary/20">
             <CardHeader>
-              <CardTitle className="text-lg">Beneficios de la Automatización</CardTitle>
+              <CardTitle className="text-lg">Beneficios de la Automatización LinkedIn</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -394,15 +449,23 @@ export const LinkedInKPIDashboard = () => {
                       {Math.floor(metrics.timeSaved / 60)}h {metrics.timeSaved % 60}m
                     </Badge>
                   </div>
-                  <Progress value={Math.min((metrics.timeSaved / 1000) * 100, 100)} className="h-2" />
+                  <Progress value={Math.min((metrics.timeSaved / 2000) * 100, 100)} className="h-2" />
                   
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Esfuerzo Manual Ahorrado</span>
+                    <span className="text-sm font-medium">Valor en Ahorro</span>
                     <Badge variant="secondary" className="bg-warning/10 text-warning">
-                      ${metrics.manualEffortSaved}
+                      ${metrics.manualEffortSaved.toLocaleString()}
                     </Badge>
                   </div>
-                  <Progress value={Math.min((metrics.manualEffortSaved / 500) * 100, 100)} className="h-2" />
+                  <Progress value={Math.min((metrics.manualEffortSaved / 10000) * 100, 100)} className="h-2" />
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">ROI Estimado</span>
+                    <Badge variant="secondary" className="bg-primary/10 text-primary">
+                      {metrics.roi.toFixed(0)}%
+                    </Badge>
+                  </div>
+                  <Progress value={Math.min(metrics.roi / 5, 100)} className="h-2" />
                 </div>
                 
                 <div className="space-y-3">
@@ -411,21 +474,20 @@ export const LinkedInKPIDashboard = () => {
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-success mt-0.5 flex-shrink-0" />
                       <span>
-                        La automatización ha ahorrado aproximadamente <strong>{Math.floor(metrics.timeSaved / 60)} horas</strong> comparado con outreach manual
+                        Se contactaron <strong>{metrics.totalProspects}</strong> prospectos en <strong>{metrics.totalCompanies}</strong> empresas diferentes
                       </span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-success mt-0.5 flex-shrink-0" />
                       <span>
-                        La tasa de aceptación actual del <strong>{metrics.acceptanceRate.toFixed(1)}%</strong> 
-                        {metrics.acceptanceRate > 20 ? " está por encima del promedio de la industria" : " puede mejorarse con mejor targeting"}
+                        Tasa de respuesta del <strong>{metrics.responseRate.toFixed(1)}%</strong> 
+                        {metrics.responseRate > 10 ? " está por encima del promedio" : " puede mejorarse"}
                       </span>
                     </li>
                     <li className="flex items-start gap-2">
                       <CheckCircle className="h-4 w-4 text-success mt-0.5 flex-shrink-0" />
                       <span>
-                        Eficiencia promedio de seguimiento de <strong>{metrics.avgFollowUpCount.toFixed(1)} mensajes por conexión</strong>
-                        {metrics.avgFollowUpCount < 3 ? " muestra excelente targeting" : " sugiere oportunidades de optimización"}
+                        <strong>{metrics.totalSectors}</strong> sectores alcanzados con una tasa de finalización del <strong>{metrics.finalRate.toFixed(1)}%</strong>
                       </span>
                     </li>
                   </ul>
