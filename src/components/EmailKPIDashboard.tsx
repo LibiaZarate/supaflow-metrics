@@ -190,7 +190,14 @@ export const EmailKPIDashboard = () => {
     const closeRate = 0.25; // 25% tasa de cierre
     const projectedRevenue = meetingsBooked * avgDealSize * closeRate;
     const systemCost = 1000; // Costo mensual del sistema
-    const roi = systemCost > 0 ? ((projectedRevenue - systemCost) / systemCost) * 100 : 0;
+    
+    // Calcular ROI con validación para evitar valores negativos extremos
+    let roi = 0;
+    if (systemCost > 0) {
+      roi = ((projectedRevenue - systemCost) / systemCost) * 100;
+      // Si el ROI es muy negativo, mostrar 0 en lugar de un número negativo grande
+      roi = Math.max(0, roi);
+    }
 
     // Análisis por Industria
     const industryCount = nocoData.reduce((acc, item) => {
