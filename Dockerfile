@@ -1,19 +1,33 @@
-# Usa una imagen base de Node si es una app frontend
-FROM node:18
+# Build stage
+FROM node:18-alpine AS builder
 
-# Crea el directorio de la app
 WORKDIR /app
 
-# Copia dependencias y código
+# Copiar archivos de configuración
 COPY package*.json ./
-RUN npm install
+
+# Instalar dependencias
+RUN npm ci
+
+# Copiar el código fuente
 COPY . .
 
-# Compila la app (si aplica)
+# Construir la aplicación
 RUN npm run build
 
-# Expón el puerto
+# Production stage
+FROM node:18-alpine AS runner
+
+WORKDIR /app
+
+# Instalar serve para servir archivos estáticos
+RUN npm install -g serve
+
+# Copiar los archivos construidos
+COPY --from=builder /app/dist ./dist
+
+# Exponer el puerto
 EXPOSE 3000
 
-# Comando de inicio
-CMD ["npm", "run", "preview"]
+# Comando para iniciar la aplicación
+CMD ["serve", "-s", "dist", "-l", "3000"]
