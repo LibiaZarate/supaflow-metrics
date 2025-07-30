@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { MetricCard } from "./MetricCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -32,19 +31,29 @@ import {
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
-interface EmailDashboardData {
-  id: number;
-  created_at: string;
-  Seguimiento_2: string | null;
-  "ID LinkedIn": string | null;
-  Nombre: string | null;
-  Apellido: string | null;
-  Final: string | null;
-  URL_LinkedIn: string | null;
-  Empresa: string | null;
-  Mensaje: string | null;
-  Status: string | null;
-  Seguimiento_1: string | null;
+// NocoDB Configuration
+const NOCODB_CONFIG = {
+  baseURL: 'https://pmnocodb.perezmartinez.mx',
+  apiToken: 'idt1kfiu1V70l2zmUII_Rd_yKDM2GkOyzGxfsmdf',
+  projectName: 'PROSPECCIÓN',
+  tableName: 'PROSPECCIÓN CORREO'
+};
+
+interface NocoDBRecord {
+  Id?: number;
+  'Primer Nombre'?: string;
+  'Segundo Nombre'?: string;
+  Correo?: string;
+  Industria?: string;
+  Compañía?: string;
+  Puesto?: string;
+  'URL LinkedIn'?: string;
+  Status?: string;
+  'Sitio Web'?: string;
+  '¿Agendaron Llamada?'?: boolean | string;
+  Respondidos?: boolean | string;
+  CreatedAt?: string;
+  UpdatedAt?: string;
 }
 
 interface EmailCalculatedMetrics {
@@ -65,43 +74,68 @@ interface EmailCalculatedMetrics {
 }
 
 export const EmailKPIDashboard = () => {
-  const [data, setData] = useState<EmailDashboardData[]>([]);
+  const [data, setData] = useState<NocoDBRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState<EmailCalculatedMetrics | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
 
   useEffect(() => {
-    fetchEmailDashboardData();
+    fetchCampaignData();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(fetchCampaignData, 30000);
+    return () => clearInterval(interval);
   }, []);
 
-  const fetchEmailDashboardData = async () => {
+  const fetchCampaignData = async () => {
     try {
       setLoading(true);
-      const { data: emailData, error } = await supabase
-        .from('Email Dashboards' as any)
-        .select('*')
-        .order('created_at', { ascending: false });
+      const tableName = encodeURIComponent(NOCODB_CONFIG.tableName);
+      const projectName = encodeURIComponent(NOCODB_CONFIG.projectName);
+      
+      const url = `${NOCODB_CONFIG.baseURL}/api/v1/db/data/noco/${projectName}/${tableName}`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'xc-token': NOCODB_CONFIG.apiToken,
+          'Content-Type': 'application/json'
+        }
+      });
 
-      if (error) {
-        console.error('Error fetching email dashboard data:', error);
+      if (!response.ok) {
+        throw new Error(`Error HTTP: ${response.status}`);
+      }
+
+      const result = await response.json();
+      const nocoData = result.list || result || [];
+      
+      console.log('Datos obtenidos de NocoDB:', nocoData);
+      
+      if (nocoData.length === 0) {
         toast({
-          title: "Error",
-          description: "Failed to fetch email dashboard data. Please try again.",
+          title: "Advertencia",
+          description: "No se encontraron datos en la base de datos NocoDB.",
           variant: "destructive",
         });
         return;
       }
 
-      if (emailData) {
-        const typedData = emailData as unknown as EmailDashboardData[];
-        setData(typedData);
-        const calculatedMetrics = calculateEmailMetrics(typedData);
-        setMetrics(calculatedMetrics);
-      }
-    } catch (error) {
-      console.error('Unexpected error:', error);
+      setData(nocoData);
+      const calculatedMetrics = calculateEmailMetrics(nocoData);
+      setMetrics(calculatedMetrics);
+      setLastUpdate(new Date());
+      
       toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
+        title: "Éxito",
+        description: `Datos actualizados: ${nocoData.length} registros cargados.`,
+        variant: "default",
+      });
+
+    } catch (error) {
+      console.error('Error conectando con NocoDB:', error);
+      toast({
+        title: "Error de Conexión",
+        description: "No se pudo conectar con la base de datos NocoDB. Verificando conexión...",
         variant: "destructive",
       });
     } finally {
@@ -109,33 +143,60 @@ export const EmailKPIDashboard = () => {
     }
   };
 
-  const calculateEmailMetrics = (emailData: EmailDashboardData[]): EmailCalculatedMetrics => {
-    const totalLeads = emailData.length;
-    const emailsSent = emailData.filter(item => item.Status === 'Enviado' || item.Status === 'sent').length;
-    const totalResponses = emailData.filter(item => item.Seguimiento_1 === 'Respondió' || item.Final === 'Respondió').length;
-    const meetingsBooked = emailData.filter(item => item.Final === 'Reunión agendada' || item.Final === 'Meeting').length;
+  const calculateEmailMetrics = (nocoData: NocoDBRecord[]): EmailCalculatedMetrics => {
+    const totalLeads = nocoData.length;
     
+    // Contar emails enviados (Status puede ser 'sent', 'enviado', 'completed')
+    const emailsSent = nocoData.filter(item => 
+      item.Status && (
+        item.Status.toLowerCase() === 'sent' || 
+        item.Status.toLowerCase() === 'enviado' ||
+        item.Status.toLowerCase() === 'completed'
+      )
+    ).length;
+    
+    // Contar respuestas (campo Respondidos)
+    const totalResponses = nocoData.filter(item => {
+      const respondidos = item.Respondidos;
+      return respondidos === true || 
+             respondidos === 'si' || 
+             respondidos === 'Sí' ||
+             respondidos === 'SI' ||
+             String(respondidos) === '1';
+    }).length;
+    
+    // Contar llamadas agendadas
+    const meetingsBooked = nocoData.filter(item => {
+      const agendada = item['¿Agendaron Llamada?'];
+      return agendada === true || 
+             agendada === 'si' || 
+             agendada === 'Sí' ||
+             agendada === 'SI' ||
+             String(agendada) === '1';
+    }).length;
+    
+    // Calcular tasas de conversión
     const replyRate = emailsSent > 0 ? (totalResponses / emailsSent) * 100 : 0;
     const meetingRate = emailsSent > 0 ? (meetingsBooked / emailsSent) * 100 : 0;
     const responseToMeetingConversion = totalResponses > 0 ? (meetingsBooked / totalResponses) * 100 : 0;
     
-    // ROI Calculations (configurable business metrics)
-    const hoursPerManualLead = 0.5;
-    const hoursSaved = emailsSent * hoursPerManualLead;
-    const hourlyCost = 60;
+    // Cálculos de ROI
+    const hoursPerLead = 0.5; // 30 min por lead manual
+    const hoursSaved = emailsSent * hoursPerLead;
+    const hourlyCost = 60; // $60 USD/hora
     const moneySaved = hoursSaved * hourlyCost;
     
-    const averageDealSize = 15000;
-    const closeRate = 0.25;
-    const projectedRevenue = meetingsBooked * averageDealSize * closeRate;
-    const investmentCost = 1000;
-    
-    const roi = investmentCost > 0 ? ((projectedRevenue - investmentCost) / investmentCost) * 100 : 0;
+    const avgDealSize = 15000; // Valor promedio por cliente
+    const closeRate = 0.25; // 25% tasa de cierre
+    const projectedRevenue = meetingsBooked * avgDealSize * closeRate;
+    const systemCost = 1000; // Costo mensual del sistema
+    const roi = systemCost > 0 ? ((projectedRevenue - systemCost) / systemCost) * 100 : 0;
 
-    // Company distribution (using Empresa as industry)
-    const industryCount = emailData.reduce((acc, item) => {
-      if (item.Empresa) {
-        acc[item.Empresa] = (acc[item.Empresa] || 0) + 1;
+    // Análisis por Industria
+    const industryCount = nocoData.reduce((acc, item) => {
+      if (item.Industria && item.Industria.trim() !== '') {
+        const industry = item.Industria.trim();
+        acc[industry] = (acc[industry] || 0) + 1;
       }
       return acc;
     }, {} as Record<string, number>);
@@ -143,27 +204,33 @@ export const EmailKPIDashboard = () => {
     const chartColors = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
     
     const industriesData = Object.entries(industryCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 7)
       .map(([name, value], index) => ({
         name,
         value,
         color: chartColors[index % chartColors.length]
-      }))
-      .slice(0, 5);
+      }));
 
-    // Contact name responses (using Nombre as job title substitute)
-    const respondedData = emailData.filter(item => item.Seguimiento_1 === 'Respondió' || item.Final === 'Respondió');
-    const jobTitleCount = respondedData.reduce((acc, item) => {
-      const fullName = `${item.Nombre || ''} ${item.Apellido || ''}`.trim();
-      if (fullName) {
-        acc[fullName] = (acc[fullName] || 0) + 1;
+    // Análisis de respuestas por Puesto
+    const respondedData = nocoData.filter(item => 
+      item.Respondidos === true || 
+      item.Respondidos === 'si' || 
+      item.Respondidos === 'Sí'
+    );
+    
+    const puestoCount = respondedData.reduce((acc, item) => {
+      if (item.Puesto && item.Puesto.trim() !== '') {
+        const puesto = item.Puesto.trim();
+        acc[puesto] = (acc[puesto] || 0) + 1;
       }
       return acc;
     }, {} as Record<string, number>);
 
-    const jobTitleResponses = Object.entries(jobTitleCount)
-      .map(([name, responses]) => ({ name, responses }))
-      .sort((a, b) => b.responses - a.responses)
-      .slice(0, 5);
+    const jobTitleResponses = Object.entries(puestoCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, responses]) => ({ name, responses }));
 
     // Funnel data
     const funnelData = [
@@ -228,9 +295,14 @@ export const EmailKPIDashboard = () => {
           <p className="text-xl text-muted-foreground">
             Análisis de Campañas de Email, Conversión y ROI de {metrics.roi.toFixed(1)}%
           </p>
-          <Badge variant="outline" className="text-sm">
-            Última actualización: {new Date().toLocaleTimeString()}
-          </Badge>
+          <div className="flex items-center justify-center gap-4">
+            <Badge variant="outline" className="text-sm">
+              🟢 Conectado a NocoDB - Última actualización: {lastUpdate.toLocaleTimeString()}
+            </Badge>
+            <Badge variant="outline" className="text-sm">
+              {data.length} registros cargados
+            </Badge>
+          </div>
         </div>
 
         {/* Metric Cards Grid */}
