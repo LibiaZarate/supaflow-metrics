@@ -50,7 +50,7 @@ interface NocoDBRecord {
   'URL LinkedIn'?: string;
   Status?: string;
   'Sitio Web'?: string;
-  '¿Agendaron Llamada?'?: boolean | string;
+  '¿Agendaron llamada?'?: boolean | string;
   Respondidos?: boolean | string;
   CreatedAt?: string;
   UpdatedAt?: string;
@@ -167,7 +167,7 @@ export const EmailKPIDashboard = () => {
     
     // Contar llamadas agendadas
     const meetingsBooked = nocoData.filter(item => {
-      const agendada = item['¿Agendaron Llamada?'];
+      const agendada = item['¿Agendaron llamada?'];
       return agendada === true || 
              agendada === 'si' || 
              agendada === 'Sí' ||
