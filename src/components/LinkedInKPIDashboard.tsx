@@ -43,6 +43,7 @@ interface NocoDBRecord {
   Mensaje: string;
   Seguimiento_1: string;
   Seguimiento_2: string;
+  '¿Respondió?': string;
 }
 
 interface CalculatedMetrics {
@@ -57,6 +58,8 @@ interface CalculatedMetrics {
   timeSaved: number;
   manualEffortSaved: number;
   roi: number;
+  connectionsSent: number;
+  responsesReceived: number;
 }
 
 export const LinkedInKPIDashboard = () => {
@@ -129,7 +132,19 @@ export const LinkedInKPIDashboard = () => {
 
     const totalProspects = dashboardData.length;
     
-    // 1. CONTACTED RATE: Prospectos con Status activo
+    // 1. CONEXIONES ENVIADAS: Status = "ENVIADO"
+    const connectionsSent = dashboardData.filter(item => 
+      item.Status && 
+      item.Status.trim().toUpperCase() === 'ENVIADO'
+    ).length;
+    
+    // 2. RESPUESTAS RECIBIDAS: ¿Respondió? = "Recibió Respuesta"
+    const responsesReceived = dashboardData.filter(item => 
+      item['¿Respondió?'] && 
+      item['¿Respondió?'].trim() === 'Recibió Respuesta'
+    ).length;
+    
+    // 3. CONTACTED RATE: Prospectos con Status activo
     const contactedProspects = dashboardData.filter(item => 
       item.Status && 
       item.Status.trim() !== '' && 
@@ -137,13 +152,10 @@ export const LinkedInKPIDashboard = () => {
     ).length;
     const contactedRate = totalProspects > 0 ? (contactedProspects / totalProspects) * 100 : 0;
     
-    // 2. RESPONSE RATE: Prospectos con Mensaje no vacío (han respondido)
-    const responsesReceived = dashboardData.filter(item => 
-      item.Mensaje && item.Mensaje.trim() !== ''
-    ).length;
-    const responseRate = totalProspects > 0 ? (responsesReceived / totalProspects) * 100 : 0;
+    // 4. RESPONSE RATE: Basado en respuestas recibidas
+    const responseRate = connectionsSent > 0 ? (responsesReceived / connectionsSent) * 100 : 0;
     
-    // 3. FINAL RATE: Prospectos que llegaron a status "Final"
+    // 5. FINAL RATE: Prospectos que llegaron a status "Final"
     const finalProspects = dashboardData.filter(item => 
       item.Final && 
       (item.Final.toLowerCase() === 'si' || 
@@ -152,7 +164,7 @@ export const LinkedInKPIDashboard = () => {
     ).length;
     const finalRate = totalProspects > 0 ? (finalProspects / totalProspects) * 100 : 0;
 
-    // 4. COMPANIES & SECTORS ANALYSIS
+    // 6. COMPANIES & SECTORS ANALYSIS
     const uniqueCompanies = new Set(
       dashboardData.filter(item => item.Empresa && item.Empresa.trim() !== '')
                    .map(item => item.Empresa.trim())
@@ -165,14 +177,14 @@ export const LinkedInKPIDashboard = () => {
     );
     const totalSectors = uniqueSectors.size;
 
-    // 5. FOLLOW-UP ANALYSIS
+    // 7. FOLLOW-UP ANALYSIS
     const followUpProspects = dashboardData.filter(item => 
       (item.Seguimiento_1 && item.Seguimiento_1.trim() !== '') ||
       (item.Seguimiento_2 && item.Seguimiento_2.trim() !== '')
     ).length;
     const followUpRate = totalProspects > 0 ? (followUpProspects / totalProspects) * 100 : 0;
 
-    // 6. MESSAGE LENGTH ANALYSIS
+    // 8. MESSAGE LENGTH ANALYSIS
     const validMessages = dashboardData.filter(item => item.Mensaje && item.Mensaje.trim() !== '');
     const avgMessageLength = validMessages.length > 0 
       ? validMessages.reduce((sum, item) => sum + item.Mensaje.length, 0) / validMessages.length 
@@ -202,7 +214,9 @@ export const LinkedInKPIDashboard = () => {
       followUpRate,
       timeSaved,
       manualEffortSaved,
-      roi
+      roi,
+      connectionsSent,
+      responsesReceived
     });
   };
 
@@ -290,7 +304,7 @@ export const LinkedInKPIDashboard = () => {
             <Target className="h-5 w-5 text-primary" />
             Métricas Principales
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <MetricCard
               title="Total de Prospectos"
               value={metrics.totalProspects}
@@ -298,12 +312,18 @@ export const LinkedInKPIDashboard = () => {
               variant="info"
             />
             <MetricCard
-              title="Tasa de Contacto"
-              value={`${metrics.contactedRate.toFixed(1)}%`}
-              trend={metrics.contactedRate > 80 ? "up" : metrics.contactedRate > 60 ? "neutral" : "down"}
-              trendValue={metrics.contactedRate > 80 ? "Excelente" : metrics.contactedRate > 60 ? "Bueno" : "Necesita mejora"}
+              title="Conexiones Enviadas"
+              value={metrics.connectionsSent}
+              subtitle={`${metrics.totalProspects > 0 ? ((metrics.connectionsSent / metrics.totalProspects) * 100).toFixed(1) : 0}% del total`}
               icon={<UserCheck className="h-4 w-4 text-success" />}
               variant="success"
+            />
+            <MetricCard
+              title="Respuestas Recibidas"
+              value={metrics.responsesReceived}
+              subtitle={`${metrics.connectionsSent > 0 ? ((metrics.responsesReceived / metrics.connectionsSent) * 100).toFixed(1) : 0}% de enviadas`}
+              icon={<MessageSquare className="h-4 w-4 text-info" />}
+              variant="default"
             />
             <MetricCard
               title="Tasa de Respuesta"
