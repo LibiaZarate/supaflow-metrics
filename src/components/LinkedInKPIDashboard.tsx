@@ -177,10 +177,11 @@ export const LinkedInKPIDashboard = () => {
     );
     const totalSectors = uniqueSectors.size;
 
-    // 7. FOLLOW-UP ANALYSIS
+    // 7. FOLLOW-UP ANALYSIS: Incluye Seguimiento_1, Seguimiento_2 y Final
     const followUpProspects = dashboardData.filter(item => 
       (item.Seguimiento_1 && item.Seguimiento_1.trim() !== '') ||
-      (item.Seguimiento_2 && item.Seguimiento_2.trim() !== '')
+      (item.Seguimiento_2 && item.Seguimiento_2.trim() !== '') ||
+      (item.Final && item.Final.trim() !== '')
     ).length;
     const followUpRate = totalProspects > 0 ? (followUpProspects / totalProspects) * 100 : 0;
 
