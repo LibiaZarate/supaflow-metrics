@@ -67,7 +67,6 @@ interface EmailCalculatedMetrics {
   hoursSaved: number;
   moneySaved: number;
   projectedRevenue: number;
-  roi: number;
   industriesData: Array<{ name: string; value: number; color: string }>;
   jobTitleResponses: Array<{ name: string; responses: number }>;
   funnelData: Array<{ name: string; value: number; fill: string }>;
@@ -180,7 +179,7 @@ export const EmailKPIDashboard = () => {
     const meetingRate = emailsSent > 0 ? (meetingsBooked / emailsSent) * 100 : 0;
     const responseToMeetingConversion = totalResponses > 0 ? (meetingsBooked / totalResponses) * 100 : 0;
     
-    // Cálculos de ROI
+    // Cálculos de ahorro de tiempo
     const hoursPerLead = 0.5; // 30 min por lead manual
     const hoursSaved = emailsSent * hoursPerLead;
     const hourlyCost = 60; // $60 USD/hora
@@ -189,15 +188,6 @@ export const EmailKPIDashboard = () => {
     const avgDealSize = 15000; // Valor promedio por cliente
     const closeRate = 0.25; // 25% tasa de cierre
     const projectedRevenue = meetingsBooked * avgDealSize * closeRate;
-    const systemCost = 1000; // Costo mensual del sistema
-    
-    // Calcular ROI con validación para evitar valores negativos extremos
-    let roi = 0;
-    if (systemCost > 0) {
-      roi = ((projectedRevenue - systemCost) / systemCost) * 100;
-      // Si el ROI es muy negativo, mostrar 0 en lugar de un número negativo grande
-      roi = Math.max(0, roi);
-    }
 
     // Análisis por Industria
     const industryCount = nocoData.reduce((acc, item) => {
@@ -258,7 +248,6 @@ export const EmailKPIDashboard = () => {
       hoursSaved,
       moneySaved,
       projectedRevenue,
-      roi,
       industriesData,
       jobTitleResponses,
       funnelData
@@ -300,7 +289,7 @@ export const EmailKPIDashboard = () => {
             Dashboard de Automatización con IA
           </h1>
           <p className="text-xl text-muted-foreground">
-            Análisis de Campañas de Email, Conversión y ROI de {metrics.roi.toFixed(1)}%
+            Análisis de Campañas de Email y Conversión
           </p>
           <div className="flex items-center justify-center gap-4">
             <Badge variant="outline" className="text-sm">
@@ -313,7 +302,7 @@ export const EmailKPIDashboard = () => {
         </div>
 
         {/* Metric Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           <MetricCard
             title="Leads Totales"
             value={metrics.totalLeads.toLocaleString()}
@@ -339,12 +328,6 @@ export const EmailKPIDashboard = () => {
             subtitle={`${metrics.meetingRate.toFixed(1)}% meeting rate`}
             icon={<Calendar className="h-5 w-5 text-warning" />}
             variant="warning"
-          />
-          <MetricCard
-            title="ROI Obtenido"
-            value={`${metrics.roi.toFixed(1)}%`}
-            icon={<DollarSign className="h-5 w-5 text-success" />}
-            variant="success"
           />
           <MetricCard
             title="Meeting Rate"
@@ -436,19 +419,7 @@ export const EmailKPIDashboard = () => {
         </div>
 
         {/* ROI and Benefits Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="bg-gradient-to-br from-warning/10 to-warning/5 border-warning/20">
-            <CardHeader>
-              <CardTitle className="text-warning">ROI Generado</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-warning">{metrics.roi.toFixed(1)}%</div>
-              <p className="text-sm text-muted-foreground mt-2">
-                Revenue proyectado: ${metrics.projectedRevenue.toLocaleString()}
-              </p>
-            </CardContent>
-          </Card>
-
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="bg-gradient-to-br from-success/10 to-success/5 border-success/20">
             <CardHeader>
               <CardTitle className="text-success">Horas Ahorradas</CardTitle>
@@ -508,7 +479,7 @@ export const EmailKPIDashboard = () => {
             </div>
             <div className="text-center mt-6 p-4 bg-gradient-to-r from-primary/10 to-success/10 rounded-lg border border-primary/20">
               <p className="text-lg font-semibold">
-                Por cada $1 USD invertido en automatización, se obtienen ${(metrics.roi/100).toFixed(2)} USD en retorno directo
+                Sistema de automatización con IA que optimiza {metrics.meetingRate.toFixed(1)}% de conversión a reuniones
               </p>
             </div>
           </CardContent>
