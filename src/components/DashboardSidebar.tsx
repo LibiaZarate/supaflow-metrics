@@ -56,7 +56,7 @@ export const DashboardSidebar = ({
         </h3>
         
         {filteredOptions.map(option => <Card key={option.id} className={cn("cursor-pointer transition-all duration-200 hover:shadow-md", selectedDashboard === option.id ? option.bgColor : "hover:bg-secondary/50", selectedDashboard === option.id && "ring-2 ring-primary/20")} onClick={() => onDashboardChange(option.id)}>
-            <CardContent className="p-4 bg-slate-950">
+            <CardContent className="p-4 bg-slate-900">
               <div className="flex items-start space-x-3">
                 <div className={cn("flex-shrink-0 p-2 rounded-lg", selectedDashboard === option.id ? option.bgColor : "bg-secondary")}>
                   <div className={selectedDashboard === option.id ? option.color : "text-muted-foreground"}>
