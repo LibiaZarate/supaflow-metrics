@@ -8,32 +8,32 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 214 36% 13%;
+    --background: 213 34% 18%;
+    --foreground: 0 0% 100%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 214 36% 13%;
+    --card: 213 34% 20%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 214 36% 13%;
+    --popover: 213 34% 20%;
+    --popover-foreground: 0 0% 100%;
 
     --primary: 345 95% 17%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 214 36% 13%;
+    --secondary: 213 34% 25%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 214 36% 95%;
-    --muted-foreground: 214 36% 50%;
+    --muted: 213 34% 25%;
+    --muted-foreground: 0 0% 70%;
 
-    --accent: 214 36% 13%;
+    --accent: 345 95% 17%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 345 95% 17%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 36% 90%;
-    --input: 214 36% 95%;
+    --border: 213 34% 30%;
+    --input: 213 34% 25%;
     --ring: 345 95% 17%;
 
     --radius: 0.5rem;
@@ -42,36 +42,36 @@ All colors MUST be HSL.
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
     --warning: 43 96% 56%;
-    --warning-foreground: 214 36% 13%;
-    --info: 214 36% 13%;
+    --warning-foreground: 213 34% 18%;
+    --info: 345 95% 17%;
     --info-foreground: 0 0% 100%;
     
     /* Chart colors */
     --chart-1: 345 95% 17%;
-    --chart-2: 214 36% 13%;
+    --chart-2: 0 0% 100%;
     --chart-3: 345 95% 35%;
-    --chart-4: 214 36% 25%;
+    --chart-4: 0 0% 85%;
     --chart-5: 345 95% 50%;
     
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(345 95% 17%), hsl(345 95% 25%));
     --gradient-success: linear-gradient(135deg, hsl(142 71% 45%), hsl(142 71% 55%));
     --gradient-warning: linear-gradient(135deg, hsl(43 96% 56%), hsl(43 96% 66%));
-    --gradient-card: linear-gradient(135deg, hsl(0 0% 100%), hsl(214 36% 98%));
+    --gradient-card: linear-gradient(135deg, hsl(213 34% 20%), hsl(213 34% 22%));
 
-    --sidebar-background: 0 0% 100%;
+    --sidebar-background: 213 34% 18%;
 
-    --sidebar-foreground: 214 36% 13%;
+    --sidebar-foreground: 0 0% 100%;
 
     --sidebar-primary: 345 95% 17%;
 
     --sidebar-primary-foreground: 0 0% 100%;
 
-    --sidebar-accent: 214 36% 95%;
+    --sidebar-accent: 213 34% 25%;
 
-    --sidebar-accent-foreground: 345 95% 17%;
+    --sidebar-accent-foreground: 0 0% 100%;
 
-    --sidebar-border: 214 36% 90%;
+    --sidebar-border: 213 34% 30%;
 
     --sidebar-ring: 345 95% 17%;
   }
