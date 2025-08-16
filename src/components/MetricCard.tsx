@@ -1,7 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
-
 interface MetricCardProps {
   title: string;
   value: string | number;
@@ -12,7 +11,6 @@ interface MetricCardProps {
   icon?: React.ReactNode;
   variant?: "default" | "success" | "warning" | "info";
 }
-
 export const MetricCard = ({
   title,
   value,
@@ -35,7 +33,6 @@ export const MetricCard = ({
         return null;
     }
   };
-
   const getVariantStyles = () => {
     switch (variant) {
       case "success":
@@ -48,37 +45,24 @@ export const MetricCard = ({
         return "border-border bg-gradient-to-br from-card to-secondary/10";
     }
   };
-
-  return (
-    <Card className={cn("transition-all duration-200 hover:shadow-lg", getVariantStyles(), className)}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+  return <Card className={cn("transition-all duration-200 hover:shadow-lg", getVariantStyles(), className)}>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-slate-900">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
         </CardTitle>
-        {icon && (
-          <div className="p-2 rounded-lg bg-primary/10">
+        {icon && <div className="p-2 rounded-lg bg-primary/10">
             {icon}
-          </div>
-        )}
+          </div>}
       </CardHeader>
-      <CardContent>
+      <CardContent className="bg-slate-900">
         <div className="text-2xl font-bold text-foreground">{value}</div>
-        {(subtitle || trend) && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+        {(subtitle || trend) && <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
             {getTrendIcon()}
-            {trendValue && (
-              <span className={cn(
-                "font-medium",
-                trend === "up" && "text-success",
-                trend === "down" && "text-destructive"
-              )}>
+            {trendValue && <span className={cn("font-medium", trend === "up" && "text-success", trend === "down" && "text-destructive")}>
                 {trendValue}
-              </span>
-            )}
+              </span>}
             {subtitle && <span>{subtitle}</span>}
-          </div>
-        )}
+          </div>}
       </CardContent>
-    </Card>
-  );
+    </Card>;
 };

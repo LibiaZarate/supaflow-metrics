@@ -3,34 +3,9 @@ import { MetricCard } from "./MetricCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell
-} from "recharts";
-import { 
-  Users, 
-  UserCheck, 
-  Clock, 
-  TrendingUp, 
-  MessageSquare, 
-  AlertTriangle,
-  Target,
-  Timer,
-  CheckCircle,
-  XCircle
-} from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
+import { Users, UserCheck, Clock, TrendingUp, MessageSquare, AlertTriangle, Target, Timer, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-
 interface NocoDBRecord {
   ID_LinkedIn: string;
   Nombre: string;
@@ -45,7 +20,6 @@ interface NocoDBRecord {
   Seguimiento_2: string;
   '¿Respondió?': string;
 }
-
 interface CalculatedMetrics {
   totalProspects: number;
   contactedRate: number;
@@ -61,34 +35,27 @@ interface CalculatedMetrics {
   connectionsSent: number;
   responsesReceived: number;
 }
-
 export const LinkedInKPIDashboard = () => {
   const [data, setData] = useState<NocoDBRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState<CalculatedMetrics | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<string>("Conectando...");
   const [lastUpdate, setLastUpdate] = useState<string>("");
-
   useEffect(() => {
     fetchDashboardData();
     // Auto-refresh cada 30 segundos
     const interval = setInterval(fetchDashboardData, 30000);
     return () => clearInterval(interval);
   }, []);
-
   const fetchDashboardData = async () => {
     const startTime = Date.now();
-    
     try {
       setConnectionStatus("Conectando a NocoDB...");
-      
       const baseURL = 'https://pmnocodb.perezmartinez.mx';
       const apiToken = 'idt1kfiu1V70l2zmUII_Rd_yKDM2GkOyzGxfsmdf';
       const projectName = 'PROSPECCIÓN';
       const tableName = 'PROSPECCIÓN LINKEDIN';
-      
       const url = `${baseURL}/api/v1/db/data/noco/${encodeURIComponent(projectName)}/${encodeURIComponent(tableName)}`;
-      
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -96,21 +63,16 @@ export const LinkedInKPIDashboard = () => {
           'Content-Type': 'application/json'
         }
       });
-
       if (!response.ok) {
         throw new Error(`Error HTTP: ${response.status}`);
       }
-
       const result = await response.json();
       const dashboardData = result.list || result || [];
-      
       setData(dashboardData);
       calculateLinkedInMetrics(dashboardData);
-      
       const loadTime = Date.now() - startTime;
       setConnectionStatus(`🟢 Conectado a NocoDB (${dashboardData.length} registros)`);
       setLastUpdate(`Actualizado: ${new Date().toLocaleTimeString()} (${loadTime}ms)`);
-      
     } catch (error) {
       console.error('Error conectando con NocoDB:', error);
       setConnectionStatus("🔴 Error de conexión");
@@ -123,87 +85,56 @@ export const LinkedInKPIDashboard = () => {
       setLoading(false);
     }
   };
-
   const calculateLinkedInMetrics = (dashboardData: NocoDBRecord[]) => {
     if (dashboardData.length === 0) {
       setMetrics(null);
       return;
     }
-
     const totalProspects = dashboardData.length;
-    
+
     // 1. CONEXIONES ENVIADAS: Status = "ENVIADO"
-    const connectionsSent = dashboardData.filter(item => 
-      item.Status && 
-      item.Status.trim().toUpperCase() === 'ENVIADO'
-    ).length;
-    
+    const connectionsSent = dashboardData.filter(item => item.Status && item.Status.trim().toUpperCase() === 'ENVIADO').length;
+
     // 2. RESPUESTAS RECIBIDAS: ¿Respondió? = "Recibió Respuesta"
-    const responsesReceived = dashboardData.filter(item => 
-      item['¿Respondió?'] && 
-      item['¿Respondió?'].trim() === 'Recibió Respuesta'
-    ).length;
-    
+    const responsesReceived = dashboardData.filter(item => item['¿Respondió?'] && item['¿Respondió?'].trim() === 'Recibió Respuesta').length;
+
     // 3. CONTACTED RATE: Prospectos con Status activo
-    const contactedProspects = dashboardData.filter(item => 
-      item.Status && 
-      item.Status.trim() !== '' && 
-      item.Status.toLowerCase() !== 'pendiente'
-    ).length;
-    const contactedRate = totalProspects > 0 ? (contactedProspects / totalProspects) * 100 : 0;
-    
+    const contactedProspects = dashboardData.filter(item => item.Status && item.Status.trim() !== '' && item.Status.toLowerCase() !== 'pendiente').length;
+    const contactedRate = totalProspects > 0 ? contactedProspects / totalProspects * 100 : 0;
+
     // 4. RESPONSE RATE: Basado en respuestas recibidas
-    const responseRate = connectionsSent > 0 ? (responsesReceived / connectionsSent) * 100 : 0;
-    
+    const responseRate = connectionsSent > 0 ? responsesReceived / connectionsSent * 100 : 0;
+
     // 5. FINAL RATE: Prospectos que llegaron a status "Final"
-    const finalProspects = dashboardData.filter(item => 
-      item.Final && 
-      (item.Final.toLowerCase() === 'si' || 
-       item.Final.toLowerCase() === 'yes' || 
-       item.Final === '1')
-    ).length;
-    const finalRate = totalProspects > 0 ? (finalProspects / totalProspects) * 100 : 0;
+    const finalProspects = dashboardData.filter(item => item.Final && (item.Final.toLowerCase() === 'si' || item.Final.toLowerCase() === 'yes' || item.Final === '1')).length;
+    const finalRate = totalProspects > 0 ? finalProspects / totalProspects * 100 : 0;
 
     // 6. COMPANIES & SECTORS ANALYSIS
-    const uniqueCompanies = new Set(
-      dashboardData.filter(item => item.Empresa && item.Empresa.trim() !== '')
-                   .map(item => item.Empresa.trim())
-    );
+    const uniqueCompanies = new Set(dashboardData.filter(item => item.Empresa && item.Empresa.trim() !== '').map(item => item.Empresa.trim()));
     const totalCompanies = uniqueCompanies.size;
-    
-    const uniqueSectors = new Set(
-      dashboardData.filter(item => item.Sector && item.Sector.trim() !== '')
-                   .map(item => item.Sector.trim())
-    );
+    const uniqueSectors = new Set(dashboardData.filter(item => item.Sector && item.Sector.trim() !== '').map(item => item.Sector.trim()));
     const totalSectors = uniqueSectors.size;
 
     // 7. FOLLOW-UP ANALYSIS: Incluye Seguimiento_1, Seguimiento_2 y Final
-    const followUpProspects = dashboardData.filter(item => 
-      (item.Seguimiento_1 && item.Seguimiento_1.trim() !== '') ||
-      (item.Seguimiento_2 && item.Seguimiento_2.trim() !== '') ||
-      (item.Final && item.Final.trim() !== '')
-    ).length;
-    const followUpRate = totalProspects > 0 ? (followUpProspects / totalProspects) * 100 : 0;
+    const followUpProspects = dashboardData.filter(item => item.Seguimiento_1 && item.Seguimiento_1.trim() !== '' || item.Seguimiento_2 && item.Seguimiento_2.trim() !== '' || item.Final && item.Final.trim() !== '').length;
+    const followUpRate = totalProspects > 0 ? followUpProspects / totalProspects * 100 : 0;
 
     // 8. MESSAGE LENGTH ANALYSIS
     const validMessages = dashboardData.filter(item => item.Mensaje && item.Mensaje.trim() !== '');
-    const avgMessageLength = validMessages.length > 0 
-      ? validMessages.reduce((sum, item) => sum + item.Mensaje.length, 0) / validMessages.length 
-      : 0;
+    const avgMessageLength = validMessages.length > 0 ? validMessages.reduce((sum, item) => sum + item.Mensaje.length, 0) / validMessages.length : 0;
 
     // TIME SAVINGS & ROI CALCULATION
     const avgManualTimePerProspect = 20; // minutos por prospecto manual
     const timeSaved = contactedProspects * avgManualTimePerProspect;
     const hourlyRate = 60; // $60 USD/hora
-    const manualEffortSaved = Math.round((timeSaved / 60) * hourlyRate);
-    
+    const manualEffortSaved = Math.round(timeSaved / 60 * hourlyRate);
+
     // ROI calculation
     const avgDealSize = 20000;
     const closeRate = 0.15; // 15% tasa de cierre estimada
     const projectedRevenue = finalProspects * avgDealSize * closeRate;
     const systemCost = 1500; // Costo mensual estimado del sistema
-    const roi = systemCost > 0 ? Math.max(0, ((projectedRevenue - systemCost) / systemCost) * 100) : 0;
-
+    const roi = systemCost > 0 ? Math.max(0, (projectedRevenue - systemCost) / systemCost * 100) : 0;
     setMetrics({
       totalProspects,
       contactedRate,
@@ -220,70 +151,60 @@ export const LinkedInKPIDashboard = () => {
       responsesReceived
     });
   };
-
   const getChartData = () => {
     return data.slice(0, 10).map((item, index) => ({
       name: `Prospecto ${index + 1}`,
       hasMessage: item.Mensaje && item.Mensaje.trim() !== '' ? 1 : 0,
-      hasFollowUp: ((item.Seguimiento_1 && item.Seguimiento_1.trim() !== '') || 
-                    (item.Seguimiento_2 && item.Seguimiento_2.trim() !== '')) ? 1 : 0,
-      isFinal: (item.Final && (item.Final.toLowerCase() === 'si' || item.Final === '1')) ? 1 : 0
+      hasFollowUp: item.Seguimiento_1 && item.Seguimiento_1.trim() !== '' || item.Seguimiento_2 && item.Seguimiento_2.trim() !== '' ? 1 : 0,
+      isFinal: item.Final && (item.Final.toLowerCase() === 'si' || item.Final === '1') ? 1 : 0
     }));
   };
-
   const getPieData = () => {
     if (!metrics) return [];
-    
-    return [
-      { name: 'Contactados', value: metrics.contactedRate, color: 'hsl(var(--chart-1))' },
-      { name: 'Pendientes', value: 100 - metrics.contactedRate, color: 'hsl(var(--chart-2))' }
-    ];
+    return [{
+      name: 'Contactados',
+      value: metrics.contactedRate,
+      color: 'hsl(var(--chart-1))'
+    }, {
+      name: 'Pendientes',
+      value: 100 - metrics.contactedRate,
+      color: 'hsl(var(--chart-2))'
+    }];
   };
-
   const getSectorData = () => {
-    const sectorCounts: { [key: string]: number } = {};
+    const sectorCounts: {
+      [key: string]: number;
+    } = {};
     data.forEach(item => {
       if (item.Sector && item.Sector.trim() !== '') {
         const sector = item.Sector.trim();
         sectorCounts[sector] = (sectorCounts[sector] || 0) + 1;
       }
     });
-    
-    return Object.entries(sectorCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([sector, count]) => ({
-        name: sector,
-        value: count,
-        color: `hsl(${Math.random() * 360}, 70%, 50%)`
-      }));
+    return Object.entries(sectorCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([sector, count]) => ({
+      name: sector,
+      value: count,
+      color: `hsl(${Math.random() * 360}, 70%, 50%)`
+    }));
   };
-
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+    return <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">Cargando panel de control...</p>
         </div>
-      </div>
-    );
+      </div>;
   }
-
   if (!metrics) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+    return <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <AlertTriangle className="h-12 w-12 text-warning mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">No hay datos disponibles</h2>
           <p className="text-muted-foreground">No se encontraron datos de automatización de LinkedIn en la base de datos.</p>
         </div>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="min-h-screen bg-background p-6">
+  return <div className="min-h-screen p-6 bg-slate-900">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
@@ -306,39 +227,11 @@ export const LinkedInKPIDashboard = () => {
             Métricas Principales
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <MetricCard
-              title="Total de Prospectos"
-              value={metrics.totalProspects}
-              icon={<Users className="h-4 w-4 text-primary" />}
-              variant="info"
-            />
-            <MetricCard
-              title="Conexiones Enviadas"
-              value={metrics.connectionsSent}
-              subtitle={`${metrics.totalProspects > 0 ? ((metrics.connectionsSent / metrics.totalProspects) * 100).toFixed(1) : 0}% del total`}
-              icon={<UserCheck className="h-4 w-4 text-success" />}
-              variant="success"
-            />
-            <MetricCard
-              title="Respuestas Recibidas"
-              value={metrics.responsesReceived}
-              subtitle={`${metrics.connectionsSent > 0 ? ((metrics.responsesReceived / metrics.connectionsSent) * 100).toFixed(1) : 0}% de enviadas`}
-              icon={<MessageSquare className="h-4 w-4 text-info" />}
-              variant="default"
-            />
-            <MetricCard
-              title="Tasa de Respuesta"
-              value={`${metrics.responseRate.toFixed(1)}%`}
-              trend={metrics.responseRate > 15 ? "up" : metrics.responseRate > 8 ? "neutral" : "down"}
-              icon={<MessageSquare className="h-4 w-4 text-info" />}
-              variant="default"
-            />
-            <MetricCard
-              title="Tasa de Finalización"
-              value={`${metrics.finalRate.toFixed(1)}%`}
-              icon={<CheckCircle className="h-4 w-4 text-primary" />}
-              variant="success"
-            />
+            <MetricCard title="Total de Prospectos" value={metrics.totalProspects} icon={<Users className="h-4 w-4 text-primary" />} variant="info" />
+            <MetricCard title="Conexiones Enviadas" value={metrics.connectionsSent} subtitle={`${metrics.totalProspects > 0 ? (metrics.connectionsSent / metrics.totalProspects * 100).toFixed(1) : 0}% del total`} icon={<UserCheck className="h-4 w-4 text-success" />} variant="success" />
+            <MetricCard title="Respuestas Recibidas" value={metrics.responsesReceived} subtitle={`${metrics.connectionsSent > 0 ? (metrics.responsesReceived / metrics.connectionsSent * 100).toFixed(1) : 0}% de enviadas`} icon={<MessageSquare className="h-4 w-4 text-info" />} variant="default" />
+            <MetricCard title="Tasa de Respuesta" value={`${metrics.responseRate.toFixed(1)}%`} trend={metrics.responseRate > 15 ? "up" : metrics.responseRate > 8 ? "neutral" : "down"} icon={<MessageSquare className="h-4 w-4 text-info" />} variant="default" />
+            <MetricCard title="Tasa de Finalización" value={`${metrics.finalRate.toFixed(1)}%`} icon={<CheckCircle className="h-4 w-4 text-primary" />} variant="success" />
           </div>
         </section>
 
@@ -349,27 +242,9 @@ export const LinkedInKPIDashboard = () => {
             Métricas de Negocio
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <MetricCard
-              title="Total de Empresas"
-              value={metrics.totalCompanies.toLocaleString()}
-              subtitle="Empresas únicas contactadas"
-              icon={<Users className="h-4 w-4 text-info" />}
-              variant="info"
-            />
-            <MetricCard
-              title="Sectores Alcanzados"
-              value={metrics.totalSectors.toLocaleString()}
-              subtitle="Sectores únicos"
-              icon={<Target className="h-4 w-4 text-success" />}
-              variant="success"
-            />
-            <MetricCard
-              title="ROI Estimado"
-              value={`${metrics.roi.toFixed(1)}%`}
-              trend={metrics.roi > 200 ? "up" : metrics.roi > 100 ? "neutral" : "down"}
-              icon={<TrendingUp className="h-4 w-4 text-primary" />}
-              variant="success"
-            />
+            <MetricCard title="Total de Empresas" value={metrics.totalCompanies.toLocaleString()} subtitle="Empresas únicas contactadas" icon={<Users className="h-4 w-4 text-info" />} variant="info" />
+            <MetricCard title="Sectores Alcanzados" value={metrics.totalSectors.toLocaleString()} subtitle="Sectores únicos" icon={<Target className="h-4 w-4 text-success" />} variant="success" />
+            <MetricCard title="ROI Estimado" value={`${metrics.roi.toFixed(1)}%`} trend={metrics.roi > 200 ? "up" : metrics.roi > 100 ? "neutral" : "down"} icon={<TrendingUp className="h-4 w-4 text-primary" />} variant="success" />
           </div>
         </section>
 
@@ -380,22 +255,8 @@ export const LinkedInKPIDashboard = () => {
             Métricas de Comunicación
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <MetricCard
-              title="Tasa de Seguimiento"
-              value={`${metrics.followUpRate.toFixed(1)}%`}
-              trend={metrics.followUpRate > 60 ? "up" : metrics.followUpRate > 40 ? "neutral" : "down"}
-              trendValue={metrics.followUpRate > 60 ? "Excelente seguimiento" : "Puede mejorar"}
-              icon={<MessageSquare className="h-4 w-4 text-info" />}
-              variant="info"
-            />
-            <MetricCard
-              title="Long. Promedio de Mensaje"
-              value={`${Math.round(metrics.avgMessageLength)} chars`}
-              trend={metrics.avgMessageLength > 100 && metrics.avgMessageLength < 300 ? "up" : "neutral"}
-              trendValue={metrics.avgMessageLength > 100 && metrics.avgMessageLength < 300 ? "Longitud óptima" : "Revisar extensión"}
-              icon={<Clock className="h-4 w-4 text-warning" />}
-              variant="warning"
-            />
+            <MetricCard title="Tasa de Seguimiento" value={`${metrics.followUpRate.toFixed(1)}%`} trend={metrics.followUpRate > 60 ? "up" : metrics.followUpRate > 40 ? "neutral" : "down"} trendValue={metrics.followUpRate > 60 ? "Excelente seguimiento" : "Puede mejorar"} icon={<MessageSquare className="h-4 w-4 text-info" />} variant="info" />
+            <MetricCard title="Long. Promedio de Mensaje" value={`${Math.round(metrics.avgMessageLength)} chars`} trend={metrics.avgMessageLength > 100 && metrics.avgMessageLength < 300 ? "up" : "neutral"} trendValue={metrics.avgMessageLength > 100 && metrics.avgMessageLength < 300 ? "Longitud óptima" : "Revisar extensión"} icon={<Clock className="h-4 w-4 text-warning" />} variant="warning" />
           </div>
         </section>
 
@@ -409,18 +270,11 @@ export const LinkedInKPIDashboard = () => {
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
-                  <Pie
-                    data={getPieData()}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({ name, value }) => `${name}: ${value.toFixed(1)}%`}
-                  >
-                    {getPieData().map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
+                  <Pie data={getPieData()} cx="50%" cy="50%" outerRadius={80} fill="#8884d8" dataKey="value" label={({
+                  name,
+                  value
+                }) => `${name}: ${value.toFixed(1)}%`}>
+                    {getPieData().map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                   </Pie>
                   <Tooltip />
                 </PieChart>
@@ -440,11 +294,7 @@ export const LinkedInKPIDashboard = () => {
                   <XAxis dataKey="name" />
                   <YAxis />
                   <Tooltip />
-                  <Bar 
-                    dataKey="value" 
-                    fill="hsl(var(--chart-1))"
-                    name="Prospectos"
-                  />
+                  <Bar dataKey="value" fill="hsl(var(--chart-1))" name="Prospectos" />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -470,7 +320,7 @@ export const LinkedInKPIDashboard = () => {
                       {Math.floor(metrics.timeSaved / 60)}h {metrics.timeSaved % 60}m
                     </Badge>
                   </div>
-                  <Progress value={Math.min((metrics.timeSaved / 2000) * 100, 100)} className="h-2" />
+                  <Progress value={Math.min(metrics.timeSaved / 2000 * 100, 100)} className="h-2" />
                   
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium">Valor en Ahorro</span>
@@ -478,7 +328,7 @@ export const LinkedInKPIDashboard = () => {
                       ${metrics.manualEffortSaved.toLocaleString()}
                     </Badge>
                   </div>
-                  <Progress value={Math.min((metrics.manualEffortSaved / 10000) * 100, 100)} className="h-2" />
+                  <Progress value={Math.min(metrics.manualEffortSaved / 10000 * 100, 100)} className="h-2" />
 
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium">ROI Estimado</span>
@@ -518,6 +368,5 @@ export const LinkedInKPIDashboard = () => {
           </Card>
         </section>
       </div>
-    </div>
-  );
+    </div>;
 };
