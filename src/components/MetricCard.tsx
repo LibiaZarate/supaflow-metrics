@@ -46,7 +46,7 @@ export const MetricCard = ({
     }
   };
   return <Card className={cn("transition-all duration-200 hover:shadow-lg", getVariantStyles(), className)}>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-slate-900">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 bg-slate-800">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
         </CardTitle>
@@ -54,7 +54,7 @@ export const MetricCard = ({
             {icon}
           </div>}
       </CardHeader>
-      <CardContent className="bg-slate-900">
+      <CardContent className="bg-slate-800">
         <div className="text-2xl font-bold text-foreground">{value}</div>
         {(subtitle || trend) && <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
             {getTrendIcon()}
