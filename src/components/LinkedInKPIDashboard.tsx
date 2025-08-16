@@ -204,7 +204,7 @@ export const LinkedInKPIDashboard = () => {
         </div>
       </div>;
   }
-  return <div className="min-h-screen p-6 bg-slate-950">
+  return <div className="min-h-screen bg-gradient-to-br from-background via-secondary/10 to-primary/5 p-6 bg-slate-950">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
